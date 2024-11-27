@@ -4,7 +4,7 @@
 #include <time.h>
 
 #define MAX_TASKS 100
-#define MAX_NAME_LENGTH 50
+#define MAX_NAME_LENGTH 100
 #define MAX_NOTES_LENGTH 100
 static int temp;
 
@@ -38,7 +38,7 @@ void addTask() {
     fgets(newTask.notes, MAX_NOTES_LENGTH, stdin);
     newTask.notes[strcspn(newTask.notes, "\n")] = 0;
 
-    printf("\nEnter priority (1: Low, 2: Medium, 3: High): ");
+    printf("\nEnter priority (1: High, 2: Medium, 3: Low): ");
     scanf("%d", &newTask.priority);
     getchar();
     while (!(newTask.priority >= 1 && newTask.priority <= 3)){
@@ -158,7 +158,13 @@ void viewTasks() {
         }
         printf("%d. %s\n", i+1, taskList[i].name);
         printf("   Notes: %s\n", taskList[i].notes);
-        printf("   Priority: %d\n", taskList[i].priority);
+        
+        if (taskList[i].priority == 1){
+        	printf("   High priority");
+		}else if(taskList[i].priority == 2){
+			printf("   Medium priority");
+		}else printf("   Low priority");
+		
         printf("   Progress: %d%%\n", taskList[i].progress);
         printf("   Deadline: %s", ctime(&taskList[i].deadline));
         printf("   Status: %s\n", taskList[i].isCompleted ? "Completed" : (taskList[i].isOverdue ? "Overdue" : "Pending"));
