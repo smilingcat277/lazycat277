@@ -1,0 +1,272 @@
+#include <string.h>
+#include <time.h>
+
+#define MAX_TASKS 100
+#define MAX_NAME_LENGTH 50
+#define MAX_NOTES_LENGTH 100
+static int temp;
+
+typedef struct {
+    char name[MAX_NAME_LENGTH];
+    char notes[MAX_NOTES_LENGTH];
+    int priority = -1; // 1: Low, 2: Medium, 3: High
+    int progress = -1; // 0-100 //-1 is because when it is being checked and a character is entered, it will check the default value which is usually 0;
+    int isRecurring = -1; // 0: No, 1: Yes
+    int isCompleted; // 0: No, 1: Yes
+    int isOverdue; // 0: No, 1: Yes
+    int isDeleted; // 0: No, 1: Yes
+    time_t deadline;
+} Task;
+
+Task taskList[MAX_TASKS];
+int taskCount = 0;
+
+void addTask() {
+    if (taskCount >= MAX_TASKS) {
+        printf("Task list is full!\n");
+        return;
+    }
+
+    Task newTask;
+    printf("\nEnter task name: ");
+    fgets(newTask.name, MAX_NAME_LENGTH, stdin);
+    newTask.name[strcspn(newTask.name, "\n")] = 0; // Remove newline
+
+    printf("\nEnter notes (optional): ");
+    fgets(newTask.notes, MAX_NOTES_LENGTH, stdin);
+    newTask.notes[strcspn(newTask.notes, "\n")] = 0;
+
+    printf("\nEnter priority (1: Low, 2: Medium, 3: High): ");
+    scanf("%d", &newTask.priority);
+    getchar();
+    while (!(newTask.priority >= 1 && newTask.priority <= 3)){
+    	printf("!Enter a valid index from the options: ");
+    	scanf("%d", &newTask.priority);
+    	getchar();
+	}
+
+    printf("\nEnter progress (0-100): ");
+    scanf("%d", &newTask.progress);
+    getchar();
+    while (!(newTask.progress >= 0 && newTask.progress <= 100)){
+    	printf("Enter a valid number between 0 and 100: ");
+    	scanf("%d", &newTask.progress);
+    	getchar();
+	}
+
+    printf("\nIs this task recurring? (0: No, 1: Yes): ");
+    scanf("%d", &newTask.isRecurring);
+    getchar();
+    while (!(newTask.isRecurring == 0 || newTask.isRecurring == 1)){
+    	printf("Enter 0 or 1: ");
+    	scanf("%d", &newTask.isRecurring);
+    	getchar();
+	}
+
+    newTask.isCompleted = 0;
+    newTask.isOverdue = 0;
+    newTask.isDeleted = 0;
+
+     struct tm tm = {0}; // Initialize all fields to zero
+    char deadlineStr[20];
+    printf("\nEnter deadline (YYYY-MM-DD HH:MM): ");
+	
+    // Using fgets instead of scanf to handle the full string, including spaces
+    fgets(deadlineStr, sizeof(deadlineStr), stdin);
+    deadlineStr[strcspn(deadlineStr, "\n")] = 0;  // Remove trailing newline
+    
+    // Parse input string into individual components
+    while (sscanf(deadlineStr, "%d-%d-%d %d:%d",
+               &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
+               &tm.tm_hour, &tm.tm_min) != 5) {
+        printf("Invalid date format. Use YYYY-MM-DD HH:MM: ");
+        fgets(deadlineStr, sizeof(deadlineStr), stdin);
+    	deadlineStr[strcspn(deadlineStr, "\n")] = 0;
+    }
+
+    // Adjust struct tm fields
+    tm.tm_year -= 1900; // Years since 1900
+    tm.tm_mon -= 1;     // Months are 0-based (0 = January)
+
+    // Convert to time_t
+    newTask.deadline = mktime(&tm);
+    while (newTask.deadline == -1) {
+        printf("Error parsing the date.Please enter it correctly: ");
+        
+        fgets(deadlineStr, sizeof(deadlineStr), stdin);
+    	deadlineStr[strcspn(deadlineStr, "\n")] = 0;
+    	
+        while (sscanf(deadlineStr, "%d-%d-%d %d:%d",
+               &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
+               &tm.tm_hour, &tm.tm_min) != 5) {
+        	printf("Invalid date format. Use YYYY-MM-DD HH:MM: ");
+        	fgets(deadlineStr, sizeof(deadlineStr), stdin);
+    		deadlineStr[strcspn(deadlineStr, "\n")] = 0;
+    	}
+    	tm.tm_year -= 1900;
+    	tm.tm_mon -= 1;
+    	newTask.deadline = mktime(&tm);
+    }
+
+    taskList[taskCount++] = newTask;
+    printf("Task added successfully!\n");
+}
+
+void updateTaskStatus() {
+    int taskIndex;
+    printf("Enter task index to update (0-%d): ", taskCount - 1);
+    scanf("%d", &taskIndex);
+
+    if (taskIndex < 0 || taskIndex >= taskCount || taskList[taskIndex].isDeleted) {
+        printf("Invalid task index!\n");
+        return;
+    }
+
+    printf("Updating task: %s\n", taskList[taskIndex].name);
+    printf("Enter new progress (0-100): ");
+    scanf("%d", &taskList[taskIndex].progress);
+
+    if (taskList[taskIndex].progress == 100) {
+        taskList[taskIndex].isCompleted = 1;
+        printf("Task marked as completed!\n");
+    }
+}
+
+void deleteTask() {
+    int taskIndex;
+    printf("Enter task index to delete (1-%d): ", taskCount);
+    scanf("%d", &temp);
+    taskIndex = temp-1;
+
+    if (taskIndex < 0 || taskIndex >= taskCount || taskList[taskIndex].isDeleted) {
+        printf("Invalid task index!\n");
+        return;
+    }
+
+    taskList[taskIndex].isDeleted = 1;
+    printf("Task deleted successfully!\n");
+}
+
+void viewTasks() {
+    printf("\nTask List:\n");
+    printf("---------------------------------------------------\n");
+    for (int i = 0; i < taskCount; i++) {
+        if (taskList[i].isDeleted) {
+            continue;
+        }
+        printf("%d. %s\n", i+1, taskList[i].name);
+        printf("   Notes: %s\n", taskList[i].notes);
+        printf("   Priority: %d\n", taskList[i].priority);
+        printf("   Progress: %d%%\n", taskList[i].progress);
+        printf("   Deadline: %s", ctime(&taskList[i].deadline));
+        printf("   Status: %s\n", taskList[i].isCompleted ? "Completed" : (taskList[i].isOverdue ? "Overdue" : "Pending"));
+        printf("---------------------------------------------------\n");
+    }
+}
+
+void generateReport() {
+    int completedTasks = 0, overdueTasks = 0;
+    for (int i = 0; i < taskCount; i++) {
+        if (taskList[i].isDeleted) {
+            continue;
+        }
+        if (taskList[i].isCompleted) completedTasks++;
+        if (taskList[i].isOverdue) overdueTasks++;
+    }
+
+    printf("\nWeekly Progress Report:\n");
+    printf("--------------------------\n");
+    printf("Total tasks: %d\n", taskCount);
+    printf("Completed tasks: %d\n", completedTasks);
+    printf("Overdue tasks: %d\n", overdueTasks);
+    printf("Pending tasks: %d\n", taskCount - completedTasks - overdueTasks);
+}
+
+void checkOverdueTasks() {
+    time_t currentTime;
+    time(&currentTime);
+
+    for (int i = 0; i < taskCount; i++) {
+        if (taskList[i].isDeleted) {
+            continue;
+        }
+        if (difftime(taskList[i].deadline, currentTime) < 0 && !taskList[i].isCompleted) {
+            taskList[i].isOverdue = 1;
+        }
+    }
+}
+
+void saveTasks() {
+    FILE *file = fopen("tasks.dat", "wb");
+    if (file == NULL) {
+        printf("Error saving tasks!\n");
+        return;
+    }
+
+    fwrite(&taskCount, sizeof(int), 1, file);
+    fwrite(taskList, sizeof(Task), taskCount, file);
+    fclose(file);
+    printf("Tasks saved successfully!\n");
+}
+
+void loadTasks() {
+    FILE *file = fopen("tasks.dat", "rb");
+    if (file == NULL) {
+        printf("No saved data found. Starting fresh!\n");
+        return;
+    }
+
+    fread(&taskCount, sizeof(int), 1, file);
+    fread(taskList, sizeof(Task), taskCount, file);
+    fclose(file);
+    printf("Tasks loaded successfully!\n");
+}
+
+int main() {
+    loadTasks();
+    int choice;
+
+    do {
+        printf("\nProcrastination Management System\n");
+        printf("----------------------------------\n");
+        printf("1. Add New Task\n");
+        printf("2. Update Task Status\n");
+        printf("3. Delete Task\n");
+        printf("4. View Tasks\n");
+        printf("5. Generate Weekly Report\n");
+        printf("6. Save and Exit\n");
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+        getchar();
+        while(!(choice >=1 && choice <= 6)){
+        	printf("\nEnter a valid index from the options: ");
+        	scanf("%d", &choice);
+        	getchar();
+		}
+
+        switch (choice) {
+            case 1:
+                addTask();
+                break;
+            case 2:
+                updateTaskStatus();
+                break;
+            case 3:
+                deleteTask();
+                break;
+            case 4:
+                viewTasks();
+                break;
+            case 5:
+                checkOverdueTasks();
+                generateReport();
+                break;
+            case 6:
+                saveTasks();
+                printf("Exiting...\n");
+                break;
+        }
+    } while (choice != 6);
+
+    return 0;
+}
